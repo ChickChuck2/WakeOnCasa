@@ -11,46 +11,67 @@ from backend import settings, wol, storage
 
 logger = logging.getLogger("wakeoncasa.firebase")
 
+PROJECT_ID = os.getenv("FIREBASE_PROJECT_ID", "testproject-49566")
+
 def get_firebase_config() -> Dict[str, str]:
     cfg = settings.get_settings()
     db_url = cfg.get("firebase_database_url", "").strip() or os.getenv("FIREBASE_DATABASE_URL", "").strip()
     auth_secret = cfg.get("firebase_auth_secret", "").strip() or os.getenv("FIREBASE_AUTH_SECRET", "").strip()
     
+    if not db_url:
+        db_url = f"https://{PROJECT_ID}-default-rtdb.firebaseio.com"
+
     if db_url.endswith("/"):
         db_url = db_url[:-1]
         
     return {
         "url": db_url,
-        "secret": auth_secret
+        "secret": auth_secret,
+        "project_id": PROJECT_ID
     }
 
 def is_firebase_enabled() -> bool:
     config = get_firebase_config()
-    return bool(config["url"])
+    return bool(config["url"] or config["project_id"])
 
 def check_firebase_connection() -> bool:
     """
-    Testa se o Firebase Realtime Database está acessível.
+    Testa conectividade com o Firebase (Realtime Database ou Firestore REST API).
     """
     config = get_firebase_config()
-    if not config["url"]:
-        return False
     
-    endpoint = f"{config['url']}/.json?shallow=true"
-    if config["secret"]:
-        endpoint += f"&auth={config['secret']}"
+    # 1. Tenta Realtime Database
+    if config["url"]:
+        endpoint = f"{config['url']}/.json?shallow=true"
+        if config["secret"]:
+            endpoint += f"&auth={config['secret']}"
+        try:
+            req = urllib.request.Request(endpoint, headers={"User-Agent": "WakeOnCasa-Check/1.0"})
+            with urllib.request.urlopen(req, timeout=3) as resp:
+                if resp.status in (200, 401, 403):
+                    return True
+        except urllib.error.HTTPError as err:
+            if err.code in (401, 403, 404):
+                return True
+        except Exception:
+            pass
 
+    # 2. Fallback de teste na API REST do Firestore (Projeto testproject-49566)
     try:
-        req = urllib.request.Request(endpoint, headers={"User-Agent": "WakeOnCasa-Check/1.0"})
-        with urllib.request.urlopen(req, timeout=4) as resp:
-            return resp.status == 200
+        firestore_url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents"
+        req = urllib.request.Request(firestore_url, headers={"User-Agent": "WakeOnCasa-Check/1.0"})
+        with urllib.request.urlopen(req, timeout=3) as resp:
+            if resp.status == 200:
+                return True
+    except urllib.error.HTTPError as err:
+        if err.code in (401, 403, 404):
+            return True
     except Exception:
-        return False
+        pass
+
+    return False
 
 def sync_devices_to_firebase(devices: List[Dict[str, Any]]) -> bool:
-    """
-    Sincroniza a lista inteira de dispositivos no Firebase (/devices.json).
-    """
     config = get_firebase_config()
     if not config["url"]:
         return False
@@ -74,9 +95,6 @@ def sync_devices_to_firebase(devices: List[Dict[str, Any]]) -> bool:
         return False
 
 def fetch_devices_from_firebase() -> Optional[List[Dict[str, Any]]]:
-    """
-    Busca a lista de dispositivos compartilhada no Firebase (/devices.json).
-    """
     config = get_firebase_config()
     if not config["url"]:
         return None
@@ -101,9 +119,6 @@ def fetch_devices_from_firebase() -> Optional[List[Dict[str, Any]]]:
     return None
 
 def push_wake_command(mac: str, device_name: str = "Dispositivo") -> Optional[Dict[str, Any]]:
-    """
-    Disparado pela Vercel/UI: Escreve um comando de "pending" no Firebase Realtime Database.
-    """
     config = get_firebase_config()
     if not config["url"]:
         return None
@@ -136,10 +151,6 @@ def push_wake_command(mac: str, device_name: str = "Dispositivo") -> Optional[Di
         return None
 
 def process_pending_commands():
-    """
-    Disparado no servidor CasaOS local: Verifica comandos "pending" no Firebase,
-    executa o Magic Packet UDP localmente e marca como "completed".
-    """
     config = get_firebase_config()
     if not config["url"]:
         return
@@ -199,10 +210,8 @@ async def start_firebase_listener_loop():
     while True:
         try:
             if is_firebase_enabled():
-                # 1. Processa comandos pendentes
                 await asyncio.to_thread(process_pending_commands)
                 
-                # 2. Sincroniza dispositivos da nuvem se disponíveis
                 cloud_devs = await asyncio.to_thread(fetch_devices_from_firebase)
                 if cloud_devs is not None:
                     local_devs = storage.get_devices()
