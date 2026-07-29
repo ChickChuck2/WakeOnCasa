@@ -12,6 +12,8 @@ DEFAULT_SETTINGS = {
     "ping_interval_seconds": 10,
     "webhook_url": "",
     "remote_agent_url": "",
+    "firebase_database_url": "",
+    "firebase_auth_secret": "",
     "notify_online": True,
     "notify_offline": True
 }

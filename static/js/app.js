@@ -272,6 +272,8 @@ async function openSettingsModal() {
 
     document.getElementById('setting-interval').value = cfg.ping_interval_seconds || 10;
     document.getElementById('setting-webhook').value = cfg.webhook_url || '';
+    document.getElementById('setting-firebase-url').value = cfg.firebase_database_url || '';
+    document.getElementById('setting-firebase-secret').value = cfg.firebase_auth_secret || '';
     document.getElementById('setting-notify-online').checked = cfg.notify_online !== false;
     document.getElementById('setting-notify-offline').checked = cfg.notify_offline !== false;
 
@@ -291,6 +293,8 @@ async function handleSettingsSubmit(event) {
   const payload = {
     ping_interval_seconds: parseInt(document.getElementById('setting-interval').value) || 10,
     webhook_url: document.getElementById('setting-webhook').value,
+    firebase_database_url: document.getElementById('setting-firebase-url').value,
+    firebase_auth_secret: document.getElementById('setting-firebase-secret').value,
     notify_online: document.getElementById('setting-notify-online').checked,
     notify_offline: document.getElementById('setting-notify-offline').checked,
   };

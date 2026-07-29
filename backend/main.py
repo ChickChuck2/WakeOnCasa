@@ -9,24 +9,26 @@ from typing import Optional, List, Dict, Any
 
 from backend.wol import send_wake_on_lan
 from backend.ping import check_device_status
-from backend import storage, settings, ping_service
+from backend import storage, settings, ping_service, firebase_service
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa o loop de ping em background
+    # Inicializa os loops de background (ping e listener do Firebase)
     ping_task = asyncio.create_task(ping_service.start_ping_loop())
+    firebase_task = asyncio.create_task(firebase_service.start_firebase_listener_loop())
     yield
-    # Cancela o loop ao fechar a aplicação
+    # Cancela as tarefas ao encerrar o servidor
     ping_task.cancel()
+    firebase_task.cancel()
     try:
-        await ping_task
-    except asyncio.CancelledError:
+        await asyncio.gather(ping_task, firebase_task, return_exceptions=True)
+    except Exception:
         pass
 
 app = FastAPI(
     title="WakeOnCasa API",
-    description="API de Wake-on-LAN e monitoramento em tempo real de dispositivos para CasaOS",
-    version="1.1.0",
+    description="API de Wake-on-LAN e monitoramento em tempo real de dispositivos para CasaOS & Vercel",
+    version="1.2.0",
     lifespan=lifespan
 )
 
@@ -42,17 +44,19 @@ class DeviceSchema(BaseModel):
 class SettingsSchema(BaseModel):
     ping_interval_seconds: int = Field(10, ge=5, le=300)
     webhook_url: Optional[str] = Field("")
+    remote_agent_url: Optional[str] = Field("")
+    firebase_database_url: Optional[str] = Field("")
+    firebase_auth_secret: Optional[str] = Field("")
     notify_online: bool = Field(True)
     notify_offline: bool = Field(True)
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "WakeOnCasa", "version": "1.1.0"}
+    return {"status": "ok", "app": "WakeOnCasa", "version": "1.2.0", "firebase": firebase_service.is_firebase_enabled()}
 
 @app.get("/api/devices")
 def list_devices():
     devices = storage.get_devices()
-    # Adiciona o status atual em cache para cada dispositivo
     for dev in devices:
         dev["status"] = ping_service.device_status_cache.get(dev["id"], {"online": False, "latency_ms": None})
     return {"devices": devices}
@@ -90,10 +94,19 @@ def wake_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
+    # 1. Se estiver rodando na Vercel ou o Firebase estiver configurado, empurra a ordem no Firebase
+    if firebase_service.is_firebase_enabled() or os.getenv("VERCEL"):
+        fb_result = firebase_service.push_wake_command(dev["mac"], dev["name"])
+        return {
+            "message": f"Sinal Wake-on-LAN enviado via Firebase Sync para {dev['name']} ({dev['mac']})",
+            "firebase": fb_result or True
+        }
+
+    # 2. Execução local direta (CasaOS)
     try:
         result = send_wake_on_lan(dev["mac"])
         return {
-            "message": f"Sinal Wake-on-LAN enviado para {dev['name']} ({dev['mac']})",
+            "message": f"Sinal Wake-on-LAN enviado localmente para {dev['name']} ({dev['mac']})",
             "result": result
         }
     except Exception as e:
@@ -130,14 +143,10 @@ def update_app_settings(config: SettingsSchema):
 
 @app.get("/api/stream-status")
 async def stream_status():
-    """
-    Endpoint de Server-Sent Events (SSE) para transmissão em tempo real do status dos dispositivos.
-    """
     queue: asyncio.Queue = asyncio.Queue()
     ping_service.sse_subscribers.add(queue)
 
     async def event_generator():
-        # Envia estado inicial assim que o cliente conecta
         initial_payload = {
             "type": "ping_update",
             "statuses": ping_service.device_status_cache
@@ -155,7 +164,7 @@ async def stream_status():
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-# Servidor de arquivos estáticos da Dashboard Frontend
+# Servidor de arquivos estáticos
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

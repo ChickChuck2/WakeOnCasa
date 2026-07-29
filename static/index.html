@@ -153,7 +153,7 @@
   <div id="settings-modal" class="modal-backdrop hidden">
     <div class="modal-card">
       <div class="modal-header">
-        <h3><i class="fa-solid fa-sliders"></i> Configurações & Webhooks</h3>
+        <h3><i class="fa-solid fa-sliders"></i> Configurações & Sync Remoto</h3>
         <button class="modal-close" onclick="closeSettingsModal()"><i class="fa-solid fa-xmark"></i></button>
       </div>
       <form id="settings-form" onsubmit="handleSettingsSubmit(event)">
@@ -161,6 +161,16 @@
         <div class="form-group">
           <label for="setting-interval">Intervalo de Ping Automático (segundos)</label>
           <input type="number" id="setting-interval" min="5" max="300" required>
+        </div>
+
+        <div class="form-group">
+          <label for="setting-firebase-url">🔥 Firebase Database URL (Para acesso externo/Vercel)</label>
+          <input type="url" id="setting-firebase-url" placeholder="https://seu-projeto-default-rtdb.firebaseio.com">
+        </div>
+
+        <div class="form-group">
+          <label for="setting-firebase-secret">🔑 Firebase Database Secret (Opcional se público)</label>
+          <input type="password" id="setting-firebase-secret" placeholder="Chave de autenticação do Firebase">
         </div>
 
         <div class="form-group">

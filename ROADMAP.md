@@ -73,13 +73,14 @@ timeline
 
 ---
 
-### 📌 Fase 5: Acesso Remoto Global & Deploy na Vercel (Hybrid Gateway)
-> **Status**: 🟢 Configuração Inicial Pronta (`vercel.json`)
+### 📌 Fase 5: Acesso Remoto Global & Deploy na Vercel (Cloud Hybrid Gateway)
+> **Status**: 🟢 Concluído (Pronto para Vercel + Firebase)
 
 - [x] Criação da especificação `vercel.json` para suporte nativo a Vercel Serverless Functions.
 - [x] Adaptador de persistência para Vercel (/tmp/data fallback).
-- [ ] Integração com **Cloudflare Tunnel** (ou Tailscale) para expor a API do CasaOS de forma segura e gratuita (sem abrir portas no roteador).
-- [ ] Conexão entre o Frontend hospedado na Vercel (`wakeoncasa.vercel.app`) e o Agente local no CasaOS para acionamento do Wake-on-LAN de qualquer lugar do mundo.
+- [x] Módulo `backend/firebase_service.py` para sincronização em tempo real via **Firebase Realtime Database**.
+- [x] Painel de configurações com suporte a credenciais do Firebase (`FIREBASE_DATABASE_URL`).
+- [x] Listener em background no CasaOS para capturar comandos remotos enviados da Vercel via Firebase.
 
 ---
 
