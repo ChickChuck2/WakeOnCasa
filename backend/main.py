@@ -11,9 +11,15 @@ from backend.wol import send_wake_on_lan
 from backend.ping import check_device_status
 from backend import storage, settings, ping_service, firebase_service
 
+IS_VERCEL = bool(os.getenv("VERCEL"))
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Inicializa os loops de background (ping e listener do Firebase)
+    if IS_VERCEL:
+        yield
+        return
+
+    # Inicializa os loops de background apenas se NÃO estiver na Vercel (servidor CasaOS)
     ping_task = asyncio.create_task(ping_service.start_ping_loop())
     firebase_task = asyncio.create_task(firebase_service.start_firebase_listener_loop())
     yield
@@ -52,7 +58,13 @@ class SettingsSchema(BaseModel):
 
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "WakeOnCasa", "version": "1.2.0", "firebase": firebase_service.is_firebase_enabled()}
+    return {
+        "status": "ok",
+        "app": "WakeOnCasa",
+        "version": "1.2.0",
+        "environment": "vercel" if IS_VERCEL else "casaos",
+        "firebase": firebase_service.is_firebase_enabled()
+    }
 
 @app.get("/api/devices")
 def list_devices():
@@ -94,15 +106,15 @@ def wake_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
-    # 1. Se estiver rodando na Vercel ou o Firebase estiver configurado, empurra a ordem no Firebase
-    if firebase_service.is_firebase_enabled() or os.getenv("VERCEL"):
+    # Se estiver rodando na Vercel ou o Firebase estiver configurado, empurra a ordem no Firebase
+    if IS_VERCEL or firebase_service.is_firebase_enabled():
         fb_result = firebase_service.push_wake_command(dev["mac"], dev["name"])
         return {
             "message": f"Sinal Wake-on-LAN enviado via Firebase Sync para {dev['name']} ({dev['mac']})",
             "firebase": fb_result or True
         }
 
-    # 2. Execução local direta (CasaOS)
+    # Execução local direta (CasaOS)
     try:
         result = send_wake_on_lan(dev["mac"])
         return {
@@ -164,7 +176,7 @@ async def stream_status():
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-# Servidor de arquivos estáticos
+# Servidor de arquivos estáticos da Dashboard Frontend
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
