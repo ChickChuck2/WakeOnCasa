@@ -27,17 +27,17 @@ timeline
 
 - [x] Leitura dos padrões de repositório e infraestrutura do servidor (`infos.md`).
 - [x] Criação da documentação base (`resumo.md`, `ROADMAP.md`, `ARCHITECTURE.md`).
-- [ ] Organização da estrutura inicial de todo o projeto e criação de readme.md e criação do repositorio no github.
-- [ ] Criação do script de sincronização automatizada (`copiar-servidor.bat`).
-- [ ] Construção do backend Python (FastAPI):
+- [x] Organização da estrutura inicial de todo o projeto, criação do `README.md` e repositório no GitHub.
+- [x] Criação do script de sincronização automatizada (`copiar-servidor.bat`).
+- [x] Construção do backend Python (FastAPI):
   - Emissor de **Magic Packet UDP** (portas 7 e 9).
   - Persistência de lista de dispositivos em JSON (`/data/devices.json`).
   - Endpoints REST para listar, cadastrar, editar, excluir e acordar máquinas.
-- [ ] Interface Web Dashboard:
+- [x] Interface Web Dashboard:
   - Estética **CasaOS Dark Glassmorphism** com cards visuais para cada dispositivo.
   - Exibição de Nome, Endereço IP, Endereço MAC, Ícone/Categoria e Ações Rápidas.
   - Animação de envio de sinal e confirmação visual ("Acordando...").
-- [ ] Empacotamento Docker & CasaOS:
+- [x] Empacotamento Docker & CasaOS:
   - `Dockerfile` enxuto otimizado para produção.
   - `docker-compose.yml` com especificações `x-casaos` e labels `com.casaos.app.*`.
 
