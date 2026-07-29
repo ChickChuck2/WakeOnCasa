@@ -131,9 +131,29 @@ body {
   animation: pulse-live-anim 1.5s infinite alternate;
 }
 
-@keyframes pulse-live-anim {
-  0% { opacity: 0.4; transform: scale(0.9); }
-  100% { opacity: 1; transform: scale(1.2); }
+.cloud-indicator {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.5px;
+  transition: var(--transition-fast);
+}
+
+.cloud-indicator.connected {
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.2);
+}
+
+.cloud-indicator.disconnected {
+  color: var(--text-dim);
+  background: rgba(100, 116, 139, 0.15);
+  border: 1px solid rgba(100, 116, 139, 0.3);
 }
 
 .brand-title span {

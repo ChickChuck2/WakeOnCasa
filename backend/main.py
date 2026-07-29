@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="WakeOnCasa API",
-    description="API de Wake-on-LAN, Varredura de Rede e Monitoramento para CasaOS & Vercel",
-    version="1.3.0",
+    description="API de Wake-on-LAN, Varredura de Rede e Sincronização Nuvem para CasaOS & Vercel",
+    version="1.4.0",
     lifespan=lifespan
 )
 
@@ -59,17 +59,29 @@ class SettingsSchema(BaseModel):
 
 @app.get("/api/health")
 def health_check():
+    fb_connected = firebase_service.check_firebase_connection() if firebase_service.is_firebase_enabled() else False
     return {
         "status": "ok",
         "app": "WakeOnCasa",
-        "version": "1.3.0",
+        "version": "1.4.0",
         "environment": "vercel" if IS_VERCEL else "casaos",
-        "firebase": firebase_service.is_firebase_enabled()
+        "firebase_enabled": firebase_service.is_firebase_enabled(),
+        "firebase_connected": fb_connected
     }
 
 @app.get("/api/devices")
 def list_devices():
-    devices = storage.get_devices()
+    # Tenta buscar dispositivos compartilhados do Firebase se configurado
+    if firebase_service.is_firebase_enabled():
+        cloud_devs = firebase_service.fetch_devices_from_firebase()
+        if cloud_devs is not None:
+            storage.save_devices(cloud_devs)
+            devices = cloud_devs
+        else:
+            devices = storage.get_devices()
+    else:
+        devices = storage.get_devices()
+
     for dev in devices:
         dev["status"] = ping_service.device_status_cache.get(dev["id"], {"online": False, "latency_ms": None})
     return {"devices": devices}
@@ -77,6 +89,8 @@ def list_devices():
 @app.post("/api/devices")
 def create_device(device: DeviceSchema):
     created = storage.add_device(device.model_dump())
+    if firebase_service.is_firebase_enabled():
+        firebase_service.sync_devices_to_firebase(storage.get_devices())
     return {"message": "Dispositivo adicionado com sucesso", "device": created}
 
 @app.get("/api/devices/{device_id}")
@@ -92,6 +106,8 @@ def update_device(device_id: str, device: DeviceSchema):
     updated = storage.update_device(device_id, device.model_dump())
     if not updated:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    if firebase_service.is_firebase_enabled():
+        firebase_service.sync_devices_to_firebase(storage.get_devices())
     return {"message": "Dispositivo atualizado com sucesso", "device": updated}
 
 @app.delete("/api/devices/{device_id}")
@@ -99,6 +115,8 @@ def delete_device(device_id: str):
     success = storage.delete_device(device_id)
     if not success:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    if firebase_service.is_firebase_enabled():
+        firebase_service.sync_devices_to_firebase(storage.get_devices())
     return {"message": "Dispositivo removido com sucesso"}
 
 @app.post("/api/wake/{device_id}")
@@ -107,7 +125,6 @@ def wake_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
-    # Se estiver rodando na Vercel ou o Firebase estiver configurado, empurra a ordem no Firebase
     if IS_VERCEL or firebase_service.is_firebase_enabled():
         fb_result = firebase_service.push_wake_command(dev["mac"], dev["name"])
         return {
@@ -115,7 +132,6 @@ def wake_device(device_id: str):
             "firebase": fb_result or True
         }
 
-    # Execução local direta (CasaOS)
     try:
         result = send_wake_on_lan(dev["mac"])
         return {
@@ -191,7 +207,6 @@ async def stream_status():
 
     return StreamingResponse(event_generator(), media_type="text/event-stream")
 
-# Servidor de arquivos estáticos da Dashboard Frontend
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 

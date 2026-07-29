@@ -10,13 +10,10 @@ SETTINGS_FILE = os.path.join(DATA_DIR, "devices.json")
 
 file_lock = Lock()
 
-INITIAL_DEVICES: List[Dict[str, Any]] = []
+# Exclui os IDs de teste legados
+TEST_DEVICE_IDS = {"dev-pc-gamer", "dev-nas-server"}
 
 def format_mac(mac_address: str) -> str:
-    """
-    Formata qualquer string MAC (com ou sem dois pontos / hífens) para o padrão AA:BB:CC:DD:EE:FF.
-    Ex: 'D85ED3F57513' -> 'D8:5E:D3:F5:75:13'
-    """
     if not mac_address:
         return ""
     cleaned = re.sub(r'[^a-fA-F0-9]', '', mac_address).upper()
@@ -24,12 +21,22 @@ def format_mac(mac_address: str) -> str:
         return ":".join(cleaned[i:i+2] for i in range(0, 12, 2))
     return mac_address.upper()
 
+def purge_legacy_test_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    return [d for d in devices if d.get("id") not in TEST_DEVICE_IDS and "AA:BB:CC:11:22:33" not in d.get("mac", "")]
+
 def ensure_data_file():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
         if not os.path.exists(SETTINGS_FILE):
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-                json.dump(INITIAL_DEVICES, f, indent=2, ensure_ascii=False)
+                json.dump([], f, indent=2, ensure_ascii=False)
+        else:
+            # Limpa dispositivos de teste antigos se existirem
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            cleaned = purge_legacy_test_devices(data)
+            if len(cleaned) != len(data):
+                save_devices(cleaned)
     except Exception:
         pass
 
@@ -38,16 +45,18 @@ def get_devices() -> List[Dict[str, Any]]:
     with file_lock:
         try:
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                data = json.load(f)
+                return purge_legacy_test_devices(data)
         except Exception:
             return []
 
 def save_devices(devices: List[Dict[str, Any]]) -> None:
     ensure_data_file()
+    cleaned = purge_legacy_test_devices(devices)
     with file_lock:
         try:
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-                json.dump(devices, f, indent=2, ensure_ascii=False)
+                json.dump(cleaned, f, indent=2, ensure_ascii=False)
         except Exception:
             pass
 
@@ -96,3 +105,6 @@ def delete_device(device_id: str) -> bool:
         save_devices(filtered)
         return True
     return False
+
+def clear_all_devices() -> None:
+    save_devices([])

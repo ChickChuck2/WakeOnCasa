@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   loadDevices();
   initSSE();
+  checkCloudStatus();
 });
 
 function initEventListeners() {
@@ -540,6 +541,32 @@ function showToast(message, type = 'info') {
   `;
   container.appendChild(toast);
   setTimeout(() => toast.remove(), 4000);
+}
+
+async function checkCloudStatus() {
+  const el = document.getElementById('cloud-indicator');
+  const txt = document.getElementById('cloud-status-text');
+  if (!el || !txt) return;
+
+  try {
+    const res = await fetch('/api/health');
+    const data = await res.json();
+    if (data.firebase_connected) {
+      el.className = 'cloud-indicator connected';
+      txt.textContent = 'Nuvem Sync: Ok';
+    } else if (data.firebase_enabled) {
+      el.className = 'cloud-indicator disconnected';
+      txt.textContent = 'Nuvem Sync: Conectando...';
+    } else {
+      el.className = 'cloud-indicator disconnected';
+      txt.textContent = 'Nuvem: Off';
+    }
+  } catch (err) {
+    if (el && txt) {
+      el.className = 'cloud-indicator disconnected';
+      txt.textContent = 'Nuvem: Off';
+    }
+  }
 }
 
 function escapeHtml(str) {
