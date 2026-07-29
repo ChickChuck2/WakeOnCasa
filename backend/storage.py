@@ -1,22 +1,34 @@
 import json
 import os
+import re
 import uuid
 from threading import Lock
 from typing import List, Dict, Any, Optional
 
 DATA_DIR = os.getenv("DATA_DIR", "/tmp/data" if os.getenv("VERCEL") else os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
-DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
+SETTINGS_FILE = os.path.join(DATA_DIR, "devices.json")
 
 file_lock = Lock()
 
-# Inicia com lista vazia para produção
 INITIAL_DEVICES: List[Dict[str, Any]] = []
+
+def format_mac(mac_address: str) -> str:
+    """
+    Formata qualquer string MAC (com ou sem dois pontos / hífens) para o padrão AA:BB:CC:DD:EE:FF.
+    Ex: 'D85ED3F57513' -> 'D8:5E:D3:F5:75:13'
+    """
+    if not mac_address:
+        return ""
+    cleaned = re.sub(r'[^a-fA-F0-9]', '', mac_address).upper()
+    if len(cleaned) == 12:
+        return ":".join(cleaned[i:i+2] for i in range(0, 12, 2))
+    return mac_address.upper()
 
 def ensure_data_file():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
-        if not os.path.exists(DEVICES_FILE):
-            with open(DEVICES_FILE, "w", encoding="utf-8") as f:
+        if not os.path.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(INITIAL_DEVICES, f, indent=2, ensure_ascii=False)
     except Exception:
         pass
@@ -25,7 +37,7 @@ def get_devices() -> List[Dict[str, Any]]:
     ensure_data_file()
     with file_lock:
         try:
-            with open(DEVICES_FILE, "r", encoding="utf-8") as f:
+            with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
             return []
@@ -34,7 +46,7 @@ def save_devices(devices: List[Dict[str, Any]]) -> None:
     ensure_data_file()
     with file_lock:
         try:
-            with open(DEVICES_FILE, "w", encoding="utf-8") as f:
+            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump(devices, f, indent=2, ensure_ascii=False)
         except Exception:
             pass
@@ -51,8 +63,8 @@ def add_device(device_data: Dict[str, Any]) -> Dict[str, Any]:
     new_device = {
         "id": f"dev-{uuid.uuid4().hex[:8]}",
         "name": device_data.get("name", "Novo Dispositivo"),
-        "ip": device_data.get("ip", ""),
-        "mac": device_data.get("mac", "").upper(),
+        "ip": device_data.get("ip", "").strip(),
+        "mac": format_mac(device_data.get("mac", "")),
         "category": device_data.get("category", "desktop"),
         "notes": device_data.get("notes", ""),
     }
@@ -67,8 +79,8 @@ def update_device(device_id: str, device_data: Dict[str, Any]) -> Optional[Dict[
             updated = {
                 **dev,
                 "name": device_data.get("name", dev["name"]),
-                "ip": device_data.get("ip", dev["ip"]),
-                "mac": device_data.get("mac", dev["mac"]).upper(),
+                "ip": device_data.get("ip", dev["ip"]).strip(),
+                "mac": format_mac(device_data.get("mac", dev["mac"])),
                 "category": device_data.get("category", dev["category"]),
                 "notes": device_data.get("notes", dev.get("notes", "")),
             }
