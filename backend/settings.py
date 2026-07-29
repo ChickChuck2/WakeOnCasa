@@ -8,11 +8,12 @@ SETTINGS_FILE = os.path.join(DATA_DIR, "settings.json")
 
 file_lock = Lock()
 
+# Configuração padrão herdada do ambiente CarlosAPI (testproject-49566)
 DEFAULT_SETTINGS = {
     "ping_interval_seconds": 10,
     "webhook_url": "",
     "remote_agent_url": "",
-    "firebase_database_url": "",
+    "firebase_database_url": "https://testproject-49566-default-rtdb.firebaseio.com",
     "firebase_auth_secret": "",
     "notify_online": True,
     "notify_offline": True
