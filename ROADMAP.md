@@ -44,12 +44,12 @@ timeline
 ---
 
 ### 📌 Fase 2: Monitoramento Contínuo de Latência & Status em Tempo Real
-> **Status**: 🟡 Planejado
+> **Status**: 🟢 Concluído (Sprint Atual)
 
-- [ ] Engine de verificação assíncrona por **Ping (ICMP/TCP)** em background no backend Python.
-- [ ] Atualização automática de status (Online / Offline / Standby) na UI sem necessidade de dar F5 (WebSockets ou Server-Sent Events).
-- [ ] Medidor de latência (ping em ms) por dispositivo.
-- [ ] Notificações no navegador ou Webhooks (Discord/Telegram) quando uma máquina for desligada ou religada.
+- [x] Engine de verificação assíncrona por **Ping (ICMP/TCP)** em background no backend Python.
+- [x] Atualização automática de status (Online / Offline / Standby) na UI sem necessidade de dar F5 (**Server-Sent Events - SSE**).
+- [x] Medidor de latência (ping em ms) por dispositivo.
+- [x] Notificações no navegador e **Webhooks** (Discord / Telegram / Custom HTTP) quando uma máquina for desligada ou religada.
 
 ---
 

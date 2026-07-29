@@ -1,19 +1,33 @@
 import os
 import asyncio
-from fastapi import FastAPI, HTTPException, Body
+from contextlib import asynccontextmanager
+from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 
 from backend.wol import send_wake_on_lan
 from backend.ping import check_device_status
-from backend import storage
+from backend import storage, settings, ping_service
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inicializa o loop de ping em background
+    ping_task = asyncio.create_task(ping_service.start_ping_loop())
+    yield
+    # Cancela o loop ao fechar a aplicação
+    ping_task.cancel()
+    try:
+        await ping_task
+    except asyncio.CancelledError:
+        pass
 
 app = FastAPI(
     title="WakeOnCasa API",
-    description="API de Wake-on-LAN e monitoramento de dispositivos para CasaOS",
-    version="1.0.0"
+    description="API de Wake-on-LAN e monitoramento em tempo real de dispositivos para CasaOS",
+    version="1.1.0",
+    lifespan=lifespan
 )
 
 STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
@@ -25,13 +39,22 @@ class DeviceSchema(BaseModel):
     category: Optional[str] = Field("desktop", example="desktop")
     notes: Optional[str] = Field("", example="Quarto principal")
 
+class SettingsSchema(BaseModel):
+    ping_interval_seconds: int = Field(10, ge=5, le=300)
+    webhook_url: Optional[str] = Field("")
+    notify_online: bool = Field(True)
+    notify_offline: bool = Field(True)
+
 @app.get("/api/health")
 def health_check():
-    return {"status": "ok", "app": "WakeOnCasa", "version": "1.0.0"}
+    return {"status": "ok", "app": "WakeOnCasa", "version": "1.1.0"}
 
 @app.get("/api/devices")
 def list_devices():
     devices = storage.get_devices()
+    # Adiciona o status atual em cache para cada dispositivo
+    for dev in devices:
+        dev["status"] = ping_service.device_status_cache.get(dev["id"], {"online": False, "latency_ms": None})
     return {"devices": devices}
 
 @app.post("/api/devices")
@@ -44,6 +67,7 @@ def get_device(device_id: str):
     dev = storage.get_device_by_id(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    dev["status"] = ping_service.device_status_cache.get(device_id, {"online": False, "latency_ms": None})
     return dev
 
 @app.put("/api/devices/{device_id}")
@@ -82,6 +106,7 @@ def ping_device(device_id: str):
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
     status = check_device_status(dev["ip"])
+    ping_service.device_status_cache[device_id] = status
     return {
         "device_id": device_id,
         "name": dev["name"],
@@ -91,15 +116,44 @@ def ping_device(device_id: str):
 
 @app.get("/api/ping-all")
 async def ping_all_devices():
-    devices = storage.get_devices()
-    tasks = [asyncio.to_thread(check_device_status, dev["ip"]) for dev in devices]
-    results = await asyncio.gather(*tasks)
-    
-    status_map = {}
-    for dev, status in zip(devices, results):
-        status_map[dev["id"]] = status
+    await ping_service.run_ping_cycle()
+    return {"statuses": ping_service.device_status_cache}
+
+@app.get("/api/settings")
+def get_app_settings():
+    return settings.get_settings()
+
+@app.put("/api/settings")
+def update_app_settings(config: SettingsSchema):
+    updated = settings.update_settings(config.model_dump())
+    return {"message": "Configurações salvas com sucesso", "settings": updated}
+
+@app.get("/api/stream-status")
+async def stream_status():
+    """
+    Endpoint de Server-Sent Events (SSE) para transmissão em tempo real do status dos dispositivos.
+    """
+    queue: asyncio.Queue = asyncio.Queue()
+    ping_service.sse_subscribers.add(queue)
+
+    async def event_generator():
+        # Envia estado inicial assim que o cliente conecta
+        initial_payload = {
+            "type": "ping_update",
+            "statuses": ping_service.device_status_cache
+        }
+        yield f"data: {json.dumps(initial_payload, ensure_ascii=False)}\n\n"
         
-    return {"statuses": status_map}
+        try:
+            while True:
+                data = await queue.get()
+                yield data
+        except asyncio.CancelledError:
+            pass
+        finally:
+            ping_service.sse_subscribers.discard(queue)
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 # Servidor de arquivos estáticos da Dashboard Frontend
 if os.path.exists(STATIC_DIR):

@@ -1,13 +1,15 @@
 /* ==========================================================================
-   WakeOnCasa - Dashboard Frontend App Engine
+   WakeOnCasa - Dashboard Frontend App Engine (Fase 2 - Real-time SSE)
    ========================================================================== */
 
 let devicesCache = [];
 let activeCategory = 'all';
+let eventSource = null;
 
 document.addEventListener('DOMContentLoaded', () => {
   initEventListeners();
   loadDevices();
+  initSSE();
 });
 
 function initEventListeners() {
@@ -27,6 +29,78 @@ function initEventListeners() {
 }
 
 // ==========================================================================
+// Real-time Server-Sent Events (SSE)
+// ==========================================================================
+
+function initSSE() {
+  if (!window.EventSource) return;
+
+  const indicator = document.getElementById('sse-indicator');
+
+  eventSource = new EventSource('/api/stream-status');
+
+  eventSource.onopen = () => {
+    if (indicator) {
+      indicator.style.display = 'inline-flex';
+    }
+  };
+
+  eventSource.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      if (data.type === 'ping_update') {
+        applyPingUpdates(data.statuses);
+        
+        if (data.changes && data.changes.length > 0) {
+          data.changes.forEach(change => {
+            const isOnline = change.new_status?.online;
+            const devName = change.device?.name || 'Dispositivo';
+            const msg = isOnline 
+              ? `🟢 ${devName} está agora ONLINE!` 
+              : `🔴 ${devName} ficou OFFLINE.`;
+            showToast(msg, isOnline ? 'success' : 'error');
+          });
+        }
+      }
+    } catch (err) {
+      console.error('Erro ao processar evento SSE:', err);
+    }
+  };
+
+  eventSource.onerror = () => {
+    if (indicator) {
+      indicator.style.display = 'none';
+    }
+  };
+}
+
+function applyPingUpdates(statusMap) {
+  if (!statusMap) return;
+
+  devicesCache.forEach(dev => {
+    if (statusMap[dev.id]) {
+      dev.status = statusMap[dev.id];
+      updateDeviceBadgeUI(dev.id, dev.status);
+    }
+  });
+  updateStats();
+}
+
+function updateDeviceBadgeUI(deviceId, status) {
+  const badge = document.getElementById(`badge-${deviceId}`);
+  const statusText = document.getElementById(`status-text-${deviceId}`);
+  if (!badge || !statusText) return;
+
+  if (status?.online) {
+    badge.className = 'device-badge online';
+    statusText.textContent = `Online (${status.latency_ms}ms)`;
+  } else {
+    badge.className = 'device-badge offline';
+    statusText.textContent = 'Offline';
+  }
+}
+
+// ==========================================================================
 // API Fetching & Render
 // ==========================================================================
 
@@ -37,7 +111,6 @@ async function loadDevices() {
     devicesCache = data.devices || [];
     renderDevices();
     updateStats();
-    refreshAllPing();
   } catch (err) {
     showToast('Erro ao carregar dispositivos', 'error');
   }
@@ -162,9 +235,6 @@ async function wakeDevice(deviceId) {
 }
 
 async function pingDevice(deviceId) {
-  const badge = document.getElementById(`badge-${deviceId}`);
-  const statusText = document.getElementById(`status-text-${deviceId}`);
-
   try {
     const res = await fetch(`/api/ping/${deviceId}`);
     const data = await res.json();
@@ -172,14 +242,7 @@ async function pingDevice(deviceId) {
     const devIndex = devicesCache.findIndex(d => d.id === deviceId);
     if (devIndex !== -1) {
       devicesCache[devIndex].status = data.status;
-    }
-
-    if (data.status?.online) {
-      badge.className = 'device-badge online';
-      statusText.textContent = `Online (${data.status.latency_ms}ms)`;
-    } else {
-      badge.className = 'device-badge offline';
-      statusText.textContent = 'Offline';
+      updateDeviceBadgeUI(deviceId, data.status);
     }
     updateStats();
   } catch (err) {
@@ -191,26 +254,7 @@ async function refreshAllPing() {
   try {
     const res = await fetch('/api/ping-all');
     const data = await res.json();
-    const statuses = data.statuses || {};
-
-    devicesCache.forEach(dev => {
-      if (statuses[dev.id]) {
-        dev.status = statuses[dev.id];
-        const badge = document.getElementById(`badge-${dev.id}`);
-        const statusText = document.getElementById(`status-text-${dev.id}`);
-
-        if (badge && statusText) {
-          if (dev.status.online) {
-            badge.className = 'device-badge online';
-            statusText.textContent = `Online (${dev.status.latency_ms}ms)`;
-          } else {
-            badge.className = 'device-badge offline';
-            statusText.textContent = 'Offline';
-          }
-        }
-      }
-    });
-    updateStats();
+    applyPingUpdates(data.statuses);
     showToast('Status de rede atualizados', 'success');
   } catch (err) {
     showToast('Erro ao atualizar status global', 'error');
@@ -218,7 +262,59 @@ async function refreshAllPing() {
 }
 
 // ==========================================================================
-// Modal & CRUD Operations
+// Settings & Webhooks Modal
+// ==========================================================================
+
+async function openSettingsModal() {
+  try {
+    const res = await fetch('/api/settings');
+    const cfg = await res.json();
+
+    document.getElementById('setting-interval').value = cfg.ping_interval_seconds || 10;
+    document.getElementById('setting-webhook').value = cfg.webhook_url || '';
+    document.getElementById('setting-notify-online').checked = cfg.notify_online !== false;
+    document.getElementById('setting-notify-offline').checked = cfg.notify_offline !== false;
+
+    document.getElementById('settings-modal').classList.remove('hidden');
+  } catch (err) {
+    showToast('Erro ao carregar configurações', 'error');
+  }
+}
+
+function closeSettingsModal() {
+  document.getElementById('settings-modal').classList.add('hidden');
+}
+
+async function handleSettingsSubmit(event) {
+  event.preventDefault();
+
+  const payload = {
+    ping_interval_seconds: parseInt(document.getElementById('setting-interval').value) || 10,
+    webhook_url: document.getElementById('setting-webhook').value,
+    notify_online: document.getElementById('setting-notify-online').checked,
+    notify_offline: document.getElementById('setting-notify-offline').checked,
+  };
+
+  try {
+    const res = await fetch('/api/settings', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      showToast('Configurações salvas com sucesso!', 'success');
+      closeSettingsModal();
+    } else {
+      showToast('Erro ao salvar configurações', 'error');
+    }
+  } catch (err) {
+    showToast('Falha na conexão', 'error');
+  }
+}
+
+// ==========================================================================
+// Device CRUD Modals
 // ==========================================================================
 
 function openAddModal() {

@@ -96,16 +96,73 @@ body {
   box-shadow: 0 0 16px var(--primary-glow);
 }
 
+.brand-title .title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .brand-title h1 {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: -0.5px;
 }
 
+.live-indicator {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--success);
+  background: var(--success-bg);
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  letter-spacing: 0.5px;
+}
+
+.pulse-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--success);
+  box-shadow: 0 0 8px var(--success);
+  animation: pulse-live-anim 1.5s infinite alternate;
+}
+
+@keyframes pulse-live-anim {
+  0% { opacity: 0.4; transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1.2); }
+}
+
 .brand-title span {
   font-size: 12px;
   color: var(--text-muted);
   font-weight: 400;
+}
+
+.checkbox-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--text-main);
+  cursor: pointer;
+}
+
+.checkbox-label input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--primary);
+  cursor: pointer;
 }
 
 /* Stats Bar */
