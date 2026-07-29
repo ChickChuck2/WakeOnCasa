@@ -51,10 +51,13 @@
 
       <!-- Header Actions -->
       <div class="header-actions">
+        <button id="btn-scan-network" class="btn btn-secondary" onclick="openScanModal()" title="Varredura de Rede (Scanner ARP/IP)">
+          <i class="fa-solid fa-magnifying-glass-location"></i> Varrer Rede
+        </button>
         <button id="btn-refresh-status" class="btn btn-secondary" title="Atualizar Ping de Todos">
           <i class="fa-solid fa-rotate-right"></i> Ping Todos
         </button>
-        <button class="btn btn-secondary" onclick="openSettingsModal()" title="Configurações & Webhooks">
+        <button class="btn btn-secondary" onclick="openSettingsModal()" title="Configurações & Sync Remoto">
           <i class="fa-solid fa-gear"></i>
         </button>
         <button id="btn-open-modal" class="btn btn-primary">
@@ -92,10 +95,15 @@
         <i class="fa-solid fa-network-wired"></i>
       </div>
       <h2>Nenhum dispositivo cadastrado</h2>
-      <p>Clique no botão abaixo para adicionar seu primeiro computador ou servidor para Wake-on-LAN.</p>
-      <button class="btn btn-primary" onclick="openAddModal()">
-        <i class="fa-solid fa-plus"></i> Cadastrar Dispositivo
-      </button>
+      <p>Clique no botão abaixo para adicionar seu primeiro computador ou varrer a rede local.</p>
+      <div class="empty-actions">
+        <button class="btn btn-primary" onclick="openAddModal()">
+          <i class="fa-solid fa-plus"></i> Cadastrar Manualmente
+        </button>
+        <button class="btn btn-secondary" onclick="openScanModal()">
+          <i class="fa-solid fa-magnifying-glass-location"></i> Varrer Rede Automático
+        </button>
+      </div>
     </div>
   </main>
 
@@ -146,6 +154,30 @@
           <button type="submit" class="btn btn-primary" id="btn-save-device">Salvar</button>
         </div>
       </form>
+    </div>
+  </div>
+
+  <!-- Network Scan Modal -->
+  <div id="scan-modal" class="modal-backdrop hidden">
+    <div class="modal-card wide">
+      <div class="modal-header">
+        <h3><i class="fa-solid fa-magnifying-glass-location"></i> Varredura de Rede (IP/ARP Scanner)</h3>
+        <button class="modal-close" onclick="closeScanModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="modal-body">
+        <p class="scan-intro">A varredura testa a conectividade na sua sub-rede local para identificar computadores e dispositivos conectados no momento.</p>
+        <div id="scan-loading" class="scan-loading hidden">
+          <i class="fa-solid fa-circle-notch fa-spin"></i>
+          <span>Varrendo endereços da rede local (1 a 254)... Aguarde alguns segundos.</span>
+        </div>
+        <div id="scan-results" class="scan-results-container">
+          <!-- Tabela com resultados da varredura -->
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" onclick="closeScanModal()">Fechar</button>
+        <button type="button" class="btn btn-primary" onclick="startNetworkScan()"><i class="fa-solid fa-rotate"></i> Varrer Novamente</button>
+      </div>
     </div>
   </div>
 

@@ -490,8 +490,51 @@ body {
   padding: 20px;
 }
 
-.modal-backdrop.hidden {
-  display: none;
+.modal-card.wide {
+  max-width: 700px;
+}
+
+.scan-intro {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 16px;
+}
+
+.scan-loading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px;
+  background: rgba(30, 41, 59, 0.5);
+  border-radius: var(--radius-md);
+  color: var(--primary);
+  font-size: 14px;
+}
+
+.scan-results-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.scan-results-table th, .scan-results-table td {
+  padding: 10px 12px;
+  text-align: left;
+  border-bottom: 1px solid var(--border-glass);
+}
+
+.scan-results-table th {
+  color: var(--text-muted);
+  font-weight: 600;
+  background: rgba(15, 23, 42, 0.4);
+}
+
+.empty-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 16px;
 }
 
 .modal-card {

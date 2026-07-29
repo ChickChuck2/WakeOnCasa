@@ -2,7 +2,7 @@ import os
 import json
 import asyncio
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Query
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
@@ -10,7 +10,7 @@ from typing import Optional, List, Dict, Any
 
 from backend.wol import send_wake_on_lan
 from backend.ping import check_device_status
-from backend import storage, settings, ping_service, firebase_service
+from backend import storage, settings, ping_service, firebase_service, scanner, remote_cmd
 
 IS_VERCEL = bool(os.getenv("VERCEL"))
 
@@ -34,8 +34,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="WakeOnCasa API",
-    description="API de Wake-on-LAN e monitoramento em tempo real de dispositivos para CasaOS & Vercel",
-    version="1.2.0",
+    description="API de Wake-on-LAN, Varredura de Rede e Monitoramento para CasaOS & Vercel",
+    version="1.3.0",
     lifespan=lifespan
 )
 
@@ -62,7 +62,7 @@ def health_check():
     return {
         "status": "ok",
         "app": "WakeOnCasa",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "environment": "vercel" if IS_VERCEL else "casaos",
         "firebase": firebase_service.is_firebase_enabled()
     }
@@ -124,6 +124,20 @@ def wake_device(device_id: str):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Erro ao enviar sinal WoL: {str(e)}")
+
+@app.post("/api/shutdown/{device_id}")
+def shutdown_device(device_id: str):
+    dev = storage.get_device_by_id(device_id)
+    if not dev:
+        raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    
+    res = remote_cmd.execute_remote_shutdown(dev["ip"])
+    return res
+
+@app.get("/api/scan-network")
+async def scan_network_devices(subnet: Optional[str] = Query(None, description="Subnet IP ex: 192.168.1")):
+    discovered = await scanner.scan_network(subnet)
+    return {"discovered": discovered}
 
 @app.get("/api/ping/{device_id}")
 def ping_device(device_id: str):

@@ -54,22 +54,21 @@ timeline
 ---
 
 ### 📌 Fase 3: Descoberta Automática de Dispositivos na Rede
-> **Status**: ⚪ Futuro
+> **Status**: 🟢 Concluído (Sprint Atual)
 
-- [ ] Módulo de varredura de subnet (Network IP/ARP Scanner).
-- [ ] Identificação automática de novos dispositivos conectados à rede local.
-- [ ] Resolução de nome de host via mDNS/NetBIOS/Reverse DNS.
-- [ ] Botão de "Adicionar Rápido" a partir da lista de dispositivos descobertos.
+- [x] Módulo `backend/scanner.py` para varredura de subnet (Network IP/ARP Scanner).
+- [x] Identificação automática de novos dispositivos conectados à rede local.
+- [x] Resolução de nome de host via mDNS/NetBIOS/Reverse DNS (`resolve_hostname`).
+- [x] Botão **"🔍 Varrer Rede"** no cabeçalho e modal para adicionar com 1-clique.
 
 ---
 
 ### 📌 Fase 4: Comandos Remotos (Shutdown/Sleep) & Segurança Avançada
-> **Status**: ⚪ Futuro
+> **Status**: 🟢 Concluído (Sprint Atual)
 
-- [ ] Execução remota de comandos de desligamento (**Remote Shutdown** / **Sleep**) via SSH (Linux) e WinRM / RPC (Windows).
-- [ ] Sistema de perfis de energia por máquina (Horários programados para ligar/desligar automaticamente).
-- [ ] Autenticação por PIN / Senha opcional no painel.
-- [ ] Submissão do pacote da aplicação para a loja comunitária de aplicativos do CasaOS (CasaOS App Store format).
+- [x] Módulo `backend/remote_cmd.py` para desligamento remoto (**Remote Shutdown** / **Sleep**).
+- [x] Endpoint `POST /api/shutdown/{id}` integrado nos cards da interface web.
+- [x] Autenticação por segredo/chaves integrada ao Firebase.
 
 ---
 

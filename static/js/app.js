@@ -1,5 +1,5 @@
 /* ==========================================================================
-   WakeOnCasa - Dashboard Frontend App Engine (Fase 2 - Real-time SSE)
+   WakeOnCasa - Dashboard Frontend App Engine (Fases 1, 2, 3 & 4)
    ========================================================================== */
 
 let devicesCache = [];
@@ -181,6 +181,9 @@ function createDeviceCardHTML(device) {
         <button class="btn-wake" id="btn-wake-${device.id}" onclick="wakeDevice('${device.id}')">
           <i class="fa-solid fa-bolt"></i> LIGAR
         </button>
+        <button class="icon-btn" onclick="shutdownDevice('${device.id}')" title="Desligamento Remoto">
+          <i class="fa-solid fa-power-off"></i>
+        </button>
         <button class="icon-btn" onclick="pingDevice('${device.id}')" title="Testar Conectividade">
           <i class="fa-solid fa-signal"></i>
         </button>
@@ -204,7 +207,7 @@ function updateStats() {
 }
 
 // ==========================================================================
-// Actions: WoL, Ping, Ping All
+// Actions: WoL, Shutdown, Ping, Ping All
 // ==========================================================================
 
 async function wakeDevice(deviceId) {
@@ -234,6 +237,26 @@ async function wakeDevice(deviceId) {
   }
 }
 
+async function shutdownDevice(deviceId) {
+  const dev = devicesCache.find(d => d.id === deviceId);
+  if (!dev) return;
+
+  if (!confirm(`Deseja realmente enviar comando de desligamento remoto para ${dev.name} (${dev.ip})?`)) return;
+
+  try {
+    const res = await fetch(`/api/shutdown/${deviceId}`, { method: 'POST' });
+    const data = await res.json();
+
+    if (data.success) {
+      showToast(data.message, 'success');
+    } else {
+      showToast(data.message || 'Falha ao desligar', 'error');
+    }
+  } catch (err) {
+    showToast('Erro de comunicação', 'error');
+  }
+}
+
 async function pingDevice(deviceId) {
   try {
     const res = await fetch(`/api/ping/${deviceId}`);
@@ -258,6 +281,102 @@ async function refreshAllPing() {
     showToast('Status de rede atualizados', 'success');
   } catch (err) {
     showToast('Erro ao atualizar status global', 'error');
+  }
+}
+
+// ==========================================================================
+// Network Scan Modal & Auto-Discovery
+// ==========================================================================
+
+function openScanModal() {
+  document.getElementById('scan-modal').classList.remove('hidden');
+  startNetworkScan();
+}
+
+function closeScanModal() {
+  document.getElementById('scan-modal').classList.add('hidden');
+}
+
+async function startNetworkScan() {
+  const loading = document.getElementById('scan-loading');
+  const resultsContainer = document.getElementById('scan-results');
+
+  loading.classList.remove('hidden');
+  resultsContainer.innerHTML = '';
+
+  try {
+    const res = await fetch('/api/scan-network');
+    const data = await res.json();
+    const discovered = data.discovered || [];
+
+    loading.classList.add('hidden');
+
+    if (discovered.length === 0) {
+      resultsContainer.innerHTML = '<p class="scan-intro">Nenhum dispositivo ativo encontrado na sub-rede local no momento.</p>';
+      return;
+    }
+
+    resultsContainer.innerHTML = `
+      <table class="scan-results-table">
+        <thead>
+          <tr>
+            <th>Nome / Host</th>
+            <th>Endereço IP</th>
+            <th>Endereço MAC</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${discovered.map(dev => `
+            <tr>
+              <td><strong>${escapeHtml(dev.name)}</strong></td>
+              <td><code>${dev.ip}</code></td>
+              <td><code>${dev.mac}</code></td>
+              <td>
+                ${dev.already_added ? `
+                  <span class="device-badge online"><i class="fa-solid fa-check"></i> Cadastrado</span>
+                ` : `
+                  <button class="btn btn-primary btn-sm" onclick="addDiscoveredDevice('${dev.name}', '${dev.ip}', '${dev.mac}')">
+                    <i class="fa-solid fa-plus"></i> Adicionar
+                  </button>
+                `}
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  } catch (err) {
+    loading.classList.add('hidden');
+    resultsContainer.innerHTML = '<p class="scan-intro" style="color: var(--danger);">Erro ao realizar varredura de rede.</p>';
+  }
+}
+
+async function addDiscoveredDevice(name, ip, mac) {
+  const payload = {
+    name: name,
+    ip: ip,
+    mac: mac,
+    category: 'desktop',
+    notes: 'Adicionado via Varredura de Rede'
+  };
+
+  try {
+    const res = await fetch('/api/devices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (res.ok) {
+      showToast(`Dispositivo ${name} adicionado!`, 'success');
+      loadDevices();
+      startNetworkScan();
+    } else {
+      showToast('Erro ao cadastrar dispositivo', 'error');
+    }
+  } catch (err) {
+    showToast('Falha na comunicação', 'error');
   }
 }
 
