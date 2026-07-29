@@ -43,7 +43,7 @@ STATIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static")
 
 class DeviceSchema(BaseModel):
     name: str = Field(..., example="PC Gamer")
-    ip: str = Field(..., example="192.168.1.100")
+    ip: Optional[str] = Field("", example="192.168.1.100")
     mac: str = Field(..., example="AA:BB:CC:11:22:33")
     category: Optional[str] = Field("desktop", example="desktop")
     notes: Optional[str] = Field("", example="Quarto principal")

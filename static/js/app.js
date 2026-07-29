@@ -168,7 +168,7 @@ function createDeviceCardHTML(device) {
         <div class="device-meta">
           <div class="meta-item">
             <span class="meta-label">IP:</span>
-            <span>${device.ip}</span>
+            <span>${device.ip || 'N/A'}</span>
           </div>
           <div class="meta-item">
             <span class="meta-label">MAC:</span>
