@@ -73,7 +73,18 @@ timeline
 
 ---
 
+### 📌 Fase 5: Acesso Remoto Global & Deploy na Vercel (Hybrid Gateway)
+> **Status**: 🟢 Configuração Inicial Pronta (`vercel.json`)
+
+- [x] Criação da especificação `vercel.json` para suporte nativo a Vercel Serverless Functions.
+- [x] Adaptador de persistência para Vercel (/tmp/data fallback).
+- [ ] Integração com **Cloudflare Tunnel** (ou Tailscale) para expor a API do CasaOS de forma segura e gratuita (sem abrir portas no roteador).
+- [ ] Conexão entre o Frontend hospedado na Vercel (`wakeoncasa.vercel.app`) e o Agente local no CasaOS para acionamento do Wake-on-LAN de qualquer lugar do mundo.
+
+---
+
 ## 📊 Critérios de Sucesso
 1. **Confiabilidade WoL**: Sucesso em 100% dos disparos de pacotes Magic Packet UDP broadcast na sub-rede local.
 2. **Tempo de Resposta**: Interface respondendo em menos de 50ms para interações locais.
 3. **Padrão CasaOS**: Instalação perfeita com 1 clique usando o `docker-compose.yml` gerado.
+4. **Deploy Vercel**: Frontend e API acessíveis globalmente via Vercel conectando ao servidor CasaOS local.

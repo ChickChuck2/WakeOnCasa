@@ -4,7 +4,7 @@ import uuid
 from threading import Lock
 from typing import List, Dict, Any, Optional
 
-DATA_DIR = os.getenv("DATA_DIR", os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
+DATA_DIR = os.getenv("DATA_DIR", "/tmp/data" if os.getenv("VERCEL") else os.path.join(os.path.dirname(os.path.dirname(__file__)), "data"))
 DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 
 file_lock = Lock()
@@ -31,10 +31,13 @@ INITIAL_DEVICES = [
 ]
 
 def ensure_data_file():
-    os.makedirs(DATA_DIR, exist_ok=True)
-    if not os.path.exists(DEVICES_FILE):
-        with open(DEVICES_FILE, "w", encoding="utf-8") as f:
-            json.dump(INITIAL_DEVICES, f, indent=2, ensure_ascii=False)
+    try:
+        os.makedirs(DATA_DIR, exist_ok=True)
+        if not os.path.exists(DEVICES_FILE):
+            with open(DEVICES_FILE, "w", encoding="utf-8") as f:
+                json.dump(INITIAL_DEVICES, f, indent=2, ensure_ascii=False)
+    except Exception:
+        pass
 
 def get_devices() -> List[Dict[str, Any]]:
     ensure_data_file()
@@ -43,13 +46,16 @@ def get_devices() -> List[Dict[str, Any]]:
             with open(DEVICES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return []
+            return INITIAL_DEVICES.copy()
 
 def save_devices(devices: List[Dict[str, Any]]) -> None:
     ensure_data_file()
     with file_lock:
-        with open(DEVICES_FILE, "w", encoding="utf-8") as f:
-            json.dump(devices, f, indent=2, ensure_ascii=False)
+        try:
+            with open(DEVICES_FILE, "w", encoding="utf-8") as f:
+                json.dump(devices, f, indent=2, ensure_ascii=False)
+        except Exception:
+            pass
 
 def get_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
     devices = get_devices()
