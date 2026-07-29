@@ -1,0 +1,28 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv
+
+# IDEs e Editores
+.vscode/
+.idea/
+*.swp
+
+# Logs e Temporários
+*.log
+*.tmp
+.DS_Store
+
+# Dados locais de runtime (preservados no servidor via volume)
+# data/devices.json
+
+# Node / Build
+node_modules/
+dist/
+build/

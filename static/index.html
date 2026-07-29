@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WakeOnCasa - Dashboard WoL</title>
+  <!-- Google Fonts: Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Custom Style -->
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+  <!-- App Header / Glass Bar -->
+  <header class="app-header">
+    <div class="header-container">
+      <div class="brand">
+        <div class="brand-icon">
+          <i class="fa-solid fa-bolt"></i>
+        </div>
+        <div class="brand-title">
+          <h1>WakeOnCasa</h1>
+          <span>CasaOS Network & Energy Control</span>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="stats-bar">
+        <div class="stat-pill">
+          <i class="fa-solid fa-server"></i>
+          <span id="stat-total">0</span> Dispositivos
+        </div>
+        <div class="stat-pill online">
+          <i class="fa-solid fa-circle-check"></i>
+          <span id="stat-online">0</span> Online
+        </div>
+        <div class="stat-pill offline">
+          <i class="fa-solid fa-circle-xmark"></i>
+          <span id="stat-offline">0</span> Offline
+        </div>
+      </div>
+
+      <!-- Header Actions -->
+      <div class="header-actions">
+        <button id="btn-refresh-status" class="btn btn-secondary" title="Atualizar Ping de Todos">
+          <i class="fa-solid fa-rotate-right"></i> Ping Todos
+        </button>
+        <button id="btn-open-modal" class="btn btn-primary">
+          <i class="fa-solid fa-plus"></i> Novo Dispositivo
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Area -->
+  <main class="main-container">
+    
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Category Filter Bar -->
+    <div class="filter-bar">
+      <div class="filter-group">
+        <button class="filter-btn active" data-category="all">Todos</button>
+        <button class="filter-btn" data-category="desktop"><i class="fa-solid fa-desktop"></i> Desktops</button>
+        <button class="filter-btn" data-category="server"><i class="fa-solid fa-server"></i> Servidores</button>
+        <button class="filter-btn" data-category="tv"><i class="fa-solid fa-tv"></i> Smart TVs</button>
+        <button class="filter-btn" data-category="console"><i class="fa-solid fa-gamepad"></i> Consoles</button>
+      </div>
+    </div>
+
+    <!-- Devices Grid -->
+    <div id="devices-grid" class="devices-grid">
+      <!-- Cards serão injetados via JavaScript -->
+    </div>
+
+    <!-- Empty State -->
+    <div id="empty-state" class="empty-state hidden">
+      <div class="empty-icon">
+        <i class="fa-solid fa-network-wired"></i>
+      </div>
+      <h2>Nenhum dispositivo cadastrado</h2>
+      <p>Clique no botão abaixo para adicionar seu primeiro computador ou servidor para Wake-on-LAN.</p>
+      <button class="btn btn-primary" onclick="openAddModal()">
+        <i class="fa-solid fa-plus"></i> Cadastrar Dispositivo
+      </button>
+    </div>
+  </main>
+
+  <!-- Add/Edit Device Modal -->
+  <div id="device-modal" class="modal-backdrop hidden">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3 id="modal-title"><i class="fa-solid fa-plus-circle"></i> Adicionar Dispositivo</h3>
+        <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <form id="device-form" onsubmit="handleFormSubmit(event)">
+        <input type="hidden" id="device-id">
+
+        <div class="form-group">
+          <label for="device-name">Nome do Dispositivo</label>
+          <input type="text" id="device-name" placeholder="Ex: PC Gamer Quarto" required>
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="device-ip">Endereço IP</label>
+            <input type="text" id="device-ip" placeholder="Ex: 192.168.1.100" required pattern="^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.){3}(25[0-5]|(2[0-4]|1\d|[1-9]|)\d)$">
+          </div>
+          <div class="form-group">
+            <label for="device-mac">Endereço MAC</label>
+            <input type="text" id="device-mac" placeholder="Ex: AA:BB:CC:11:22:33" required pattern="^([0-9A-Fa-f]{2}[:-]){5}([0-9A-Fa-f]{2})$">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="device-category">Categoria / Ícone</label>
+          <select id="device-category">
+            <option value="desktop">🖥️ Computador / Desktop</option>
+            <option value="server">🗄️ Servidor / NAS</option>
+            <option value="tv">📺 Smart TV</option>
+            <option value="console">🎮 Console de Videogame</option>
+            <option value="router">🌐 Roteador / Switch</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="device-notes">Observações (Opcional)</label>
+          <input type="text" id="device-notes" placeholder="Ex: Sistema Windows 11 no quarto">
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+          <button type="submit" class="btn btn-primary" id="btn-save-device">Salvar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

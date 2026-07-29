@@ -1,0 +1,49 @@
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: wakeoncasa
+  icon: "https://cdn-icons-png.flaticon.com/512/3659/3659899.png"
+  title:
+    en_us: "WakeOnCasa"
+    pt_br: "WakeOnCasa"
+  description:
+    en_us: "Painel de Wake-on-LAN e monitoramento de dispositivos para CasaOS"
+    pt_br: "Painel de Wake-on-LAN e monitoramento de dispositivos para CasaOS"
+  index: /
+  port_map: "8089"
+  scheme: http
+  category: "Utilities"
+
+services:
+  wakeoncasa:
+    image: wakeoncasa:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wakeoncasa
+    hostname: wakeoncasa
+    restart: unless-stopped
+    network_mode: host
+    security_opt:
+      - no-new-privileges:true
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          memory: 64M
+    volumes:
+      - /DATA/AppData/WakeOnCasa/data:/app/data
+    environment:
+      - DATA_DIR=/app/data
+      - TZ=America/Sao_Paulo
+    labels:
+      - "com.casaos.app.id=wakeoncasa"
+      - "com.casaos.app.title=WakeOnCasa"
+      - "com.casaos.app.name=WakeOnCasa"
+      - "com.casaos.app.icon=https://cdn-icons-png.flaticon.com/512/3659/3659899.png"
+      - "com.casaos.app.description=Painel de Wake-on-LAN e monitoramento de dispositivos para CasaOS"
+      - "com.casaos.app.port.map=8089"
+      - "com.casaos.app.category=Utilities"
