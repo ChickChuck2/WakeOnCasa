@@ -9,26 +9,8 @@ DEVICES_FILE = os.path.join(DATA_DIR, "devices.json")
 
 file_lock = Lock()
 
-INITIAL_DEVICES = [
-    {
-        "id": "dev-pc-gamer",
-        "name": "PC Gamer Principal",
-        "ip": "192.168.1.100",
-        "mac": "AA:BB:CC:11:22:33",
-        "category": "desktop",
-        "notes": "Computador desktop do quarto",
-        "created_at": "2026-07-29T19:00:00Z"
-    },
-    {
-        "id": "dev-nas-server",
-        "name": "Servidor NAS TrueNAS",
-        "ip": "192.168.1.150",
-        "mac": "BC:24:11:99:88:77",
-        "category": "server",
-        "notes": "Servidor de arquivos e backups",
-        "created_at": "2026-07-29T19:00:00Z"
-    }
-]
+# Inicia com lista vazia para produção
+INITIAL_DEVICES: List[Dict[str, Any]] = []
 
 def ensure_data_file():
     try:
@@ -46,7 +28,7 @@ def get_devices() -> List[Dict[str, Any]]:
             with open(DEVICES_FILE, "r", encoding="utf-8") as f:
                 return json.load(f)
         except Exception:
-            return INITIAL_DEVICES.copy()
+            return []
 
 def save_devices(devices: List[Dict[str, Any]]) -> None:
     ensure_data_file()

@@ -14,7 +14,7 @@ echo.
 echo   [*] Certifique-se de que o caminho de rede esta acessivel.
 echo.
 echo   Serao copiados: Codigos backend, static UI, Dockerfile e configuracoes.
-echo   Serao EXCLUIDOS da copia: .git, __pycache__, logs e temporarios.
+echo   Serao EXCLUIDOS da copia: .git, __pycache__, logs, data e temporarios.
 echo.
 echo ========================================================
 echo.
@@ -34,7 +34,7 @@ echo   Iniciando copia para o servidor...
 echo ========================================================
 echo.
 
-robocopy . "%DESTINO%" /E /NP /COPY:DT /NODCOPY /R:3 /W:3 /XD .git __pycache__ venv .venv /XF *.log *.tmp
+robocopy . "%DESTINO%" /E /NP /COPY:DT /NODCOPY /R:3 /W:3 /XD .git __pycache__ venv .venv data /XF *.log *.tmp
 
 echo.
 echo ========================================================
