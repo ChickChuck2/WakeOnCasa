@@ -171,7 +171,7 @@ def ping_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
-    status = check_device_status(dev["ip"])
+    status = check_device_status(dev.get("ip", ""), dev.get("mac", ""))
     ping_service.device_status_cache[device_id] = status
     if firebase_service.is_firebase_enabled():
         firebase_service.sync_statuses_to_firebase(ping_service.device_status_cache)

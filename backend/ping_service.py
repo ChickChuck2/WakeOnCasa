@@ -78,7 +78,7 @@ async def run_ping_cycle():
     if not devices:
         return
 
-    tasks = [asyncio.to_thread(check_device_status, dev["ip"]) for dev in devices]
+    tasks = [asyncio.to_thread(check_device_status, dev.get("ip", ""), dev.get("mac", "")) for dev in devices]
     results = await asyncio.gather(*tasks)
 
     changed_events = []
