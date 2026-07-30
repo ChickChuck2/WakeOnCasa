@@ -112,7 +112,13 @@ def find_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
 
 @app.post("/api/devices")
 def create_device(device: DeviceSchema):
-    created = storage.add_device(device.model_dump())
+    dev_dict = device.model_dump()
+    if not dev_dict.get("ip"):
+        resolved_status = check_device_status("", dev_dict.get("mac", ""))
+        if resolved_status.get("resolved_ip"):
+            dev_dict["ip"] = resolved_status["resolved_ip"]
+
+    created = storage.add_device(dev_dict)
     if firebase_service.is_firebase_enabled():
         firebase_service.sync_devices_to_firebase(storage.get_devices())
     return {"message": "Dispositivo adicionado com sucesso", "device": created}
@@ -127,10 +133,16 @@ def get_device(device_id: str):
 
 @app.put("/api/devices/{device_id}")
 def update_device(device_id: str, device: DeviceSchema):
-    updated = storage.update_device(device_id, device.model_dump())
+    dev_dict = device.model_dump()
+    if not dev_dict.get("ip"):
+        resolved_status = check_device_status("", dev_dict.get("mac", ""))
+        if resolved_status.get("resolved_ip"):
+            dev_dict["ip"] = resolved_status["resolved_ip"]
+
+    updated = storage.update_device(device_id, dev_dict)
     if firebase_service.is_firebase_enabled():
         firebase_service.sync_devices_to_firebase(storage.get_devices())
-    return {"message": "Dispositivo atualizado com sucesso", "device": updated or device.model_dump()}
+    return {"message": "Dispositivo atualizado com sucesso", "device": updated or dev_dict}
 
 @app.delete("/api/devices/{device_id}")
 def delete_device(device_id: str):
