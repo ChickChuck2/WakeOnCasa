@@ -179,7 +179,15 @@ def shutdown_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
-    res = remote_cmd.execute_remote_shutdown(dev["ip"])
+    target_ip = dev.get("ip", "").strip()
+    if not target_ip:
+        status_res = check_device_status("", dev.get("mac", ""))
+        target_ip = status_res.get("resolved_ip", "")
+
+    if not target_ip:
+        return {"success": False, "message": f"Não foi possível identificar o IP do dispositivo {dev['name']}. Adicione o IP no cadastro."}
+
+    res = remote_cmd.execute_remote_shutdown(target_ip)
     return res
 
 @app.get("/api/scan-network")
