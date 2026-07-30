@@ -521,7 +521,7 @@ async function deleteDevice(deviceId) {
     showToast('Dispositivo removido', 'info');
   } finally {
     devicesCache = devicesCache.filter(d => d.id !== deviceId);
-    renderDeviceCards(devicesCache);
+    renderDevices();
     updateStats();
     loadDevices();
   }

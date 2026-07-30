@@ -132,7 +132,7 @@
           </div>
           <div class="form-group">
             <label for="device-mac">Endereço MAC</label>
-            <input type="text" id="device-mac" placeholder="Ex: D85ED3F57513 ou AA:BB:CC:11:22:33" required pattern="^(([0-9A-Fa-f]{2}[:-]?){5}([0-9A-Fa-f]{2})|([0-9A-Fa-f]{12}))$">
+            <input type="text" id="device-mac" placeholder="Ex: D85ED3F57513 ou AA:BB:CC:11:22:33" required pattern="^([0-9A-Fa-f]{12}|([0-9A-Fa-f]{2}[:\-]){5}[0-9A-Fa-f]{2})$">
           </div>
         </div>
 
@@ -205,7 +205,7 @@
 
         <div class="form-group">
           <label for="setting-firebase-secret">🔑 Firebase Database Secret (Opcional se público)</label>
-          <input type="password" id="setting-firebase-secret" placeholder="Chave de autenticação do Firebase">
+          <input type="password" id="setting-firebase-secret" placeholder="Chave de autenticação do Firebase" autocomplete="off">
         </div>
 
         <div class="form-group">
