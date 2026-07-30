@@ -97,6 +97,10 @@ def list_devices():
             dev["status"] = cloud_statuses[dev_id]
         else:
             dev["status"] = {"online": False, "latency_ms": None}
+
+        # Se o IP estava em branco mas o detector resolveu o IP, preenche automaticamente na exibição!
+        if not dev.get("ip") and dev.get("status", {}).get("resolved_ip"):
+            dev["ip"] = dev["status"]["resolved_ip"]
             
     return {"devices": devices}
 
