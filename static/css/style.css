@@ -671,3 +671,173 @@ input:focus, select:focus {
 }
 
 .hidden { display: none !important; }
+
+/* Auth Modal */
+.auth-backdrop {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(3, 7, 18, 0.88);
+  z-index: 1000;
+}
+
+.auth-card {
+  max-width: 400px;
+  text-align: center;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  box-shadow: 0 0 40px rgba(14, 165, 233, 0.2);
+}
+
+.auth-header {
+  margin-bottom: 24px;
+}
+
+.auth-lock-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 16px;
+  background: rgba(14, 165, 233, 0.15);
+  border: 1px solid rgba(14, 165, 233, 0.4);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+  color: var(--primary-light);
+  box-shadow: 0 0 20px rgba(14, 165, 233, 0.3);
+}
+
+.input-with-icon {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.input-with-icon .input-icon {
+  position: absolute;
+  left: 14px;
+  color: var(--text-dim);
+}
+
+.input-with-icon input {
+  padding-left: 40px;
+  padding-right: 40px;
+  font-size: 16px;
+  letter-spacing: 2px;
+}
+
+.toggle-password-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  padding: 6px;
+  font-size: 14px;
+}
+
+.toggle-password-btn:hover {
+  color: var(--text-main);
+}
+
+.auth-error {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 10px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  justify-content: center;
+}
+
+.btn-login {
+  width: 100%;
+  padding: 12px;
+  font-size: 15px;
+  font-weight: 600;
+  margin-top: 8px;
+}
+
+.shake-anim {
+  animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both;
+}
+
+@keyframes shake {
+  10%, 90% { transform: translate3d(-1px, 0, 0); }
+  20%, 80% { transform: translate3d(2px, 0, 0); }
+  30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+  40%, 60% { transform: translate3d(4px, 0, 0); }
+}
+
+/* Windows BSOD Fake Screen */
+.bsod-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: #0078d7;
+  color: #ffffff;
+  font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, Roboto, sans-serif;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding: 8vw 10vw;
+  box-sizing: border-box;
+  user-select: none;
+}
+
+.bsod-content {
+  max-width: 900px;
+}
+
+.bsod-sad-face {
+  font-size: 120px;
+  line-height: 1;
+  font-weight: 300;
+  margin-bottom: 24px;
+}
+
+.bsod-main-text {
+  font-size: 26px;
+  font-weight: 300;
+  line-height: 1.35;
+  margin-bottom: 30px;
+}
+
+.bsod-progress {
+  font-size: 26px;
+  font-weight: 300;
+  margin-bottom: 48px;
+}
+
+.bsod-footer {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.bsod-qr {
+  background: #ffffff;
+  padding: 8px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+.bsod-details p {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.4;
+  margin: 0 0 6px 0;
+}
+
+.bsod-code {
+  font-family: 'Consolas', 'Courier New', monospace;
+  letter-spacing: 0.5px;
+  opacity: 0.9;
+}

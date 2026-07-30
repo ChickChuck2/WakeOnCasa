@@ -6,12 +6,104 @@ let devicesCache = [];
 let activeCategory = 'all';
 let eventSource = null;
 
+const CORRECT_PASSWORD = '112003';
+let authAttempts = 3;
+
 document.addEventListener('DOMContentLoaded', () => {
+  checkAuthentication();
   initEventListeners();
   loadDevices();
   initSSE();
   checkCloudStatus();
 });
+
+function checkAuthentication() {
+  const isAuth = localStorage.getItem('wakeoncasa_auth');
+  if (isAuth === 'true') {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.classList.add('hidden');
+  } else {
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) {
+      authModal.classList.remove('hidden');
+      const passInput = document.getElementById('auth-password');
+      if (passInput) passInput.focus();
+    }
+  }
+}
+
+function handleAuthSubmit(e) {
+  e.preventDefault();
+  const inputPass = document.getElementById('auth-password').value;
+  const errorBox = document.getElementById('auth-error-msg');
+  const attemptsText = document.getElementById('auth-attempts-text');
+  const card = document.querySelector('.auth-card');
+
+  if (inputPass === CORRECT_PASSWORD) {
+    localStorage.setItem('wakeoncasa_auth', 'true');
+    const authModal = document.getElementById('auth-modal');
+    if (authModal) authModal.classList.add('hidden');
+    showToast('Acesso autorizado com sucesso!', 'success');
+  } else {
+    authAttempts--;
+    if (card) {
+      card.classList.add('shake-anim');
+      setTimeout(() => card.classList.remove('shake-anim'), 500);
+    }
+
+    if (authAttempts <= 0) {
+      triggerBSOD();
+    } else {
+      if (errorBox) errorBox.classList.remove('hidden');
+      if (attemptsText) attemptsText.textContent = `Senha incorreta. Tentativas restantes: ${authAttempts}`;
+      const passInput = document.getElementById('auth-password');
+      if (passInput) {
+        passInput.value = '';
+        passInput.focus();
+      }
+    }
+  }
+}
+
+function togglePasswordVisibility(inputId, btn) {
+  const input = document.getElementById(inputId);
+  if (!input) return;
+  if (input.type === 'password') {
+    input.type = 'text';
+    btn.innerHTML = '<i class="fa-solid fa-eye-slash"></i>';
+  } else {
+    input.type = 'password';
+    btn.innerHTML = '<i class="fa-solid fa-eye"></i>';
+  }
+}
+
+function triggerBSOD() {
+  const authModal = document.getElementById('auth-modal');
+  if (authModal) authModal.classList.add('hidden');
+  
+  const bsod = document.getElementById('bsod-screen');
+  if (bsod) {
+    bsod.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+  }
+
+  try {
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen();
+    }
+  } catch (err) {}
+
+  let percent = 0;
+  const percentEl = document.getElementById('bsod-percentage');
+  const interval = setInterval(() => {
+    percent += Math.floor(Math.random() * 15) + 5;
+    if (percent >= 100) {
+      percent = 100;
+      clearInterval(interval);
+    }
+    if (percentEl) percentEl.textContent = percent;
+  }, 1000);
+}
 
 function initEventListeners() {
   // Filter Buttons
