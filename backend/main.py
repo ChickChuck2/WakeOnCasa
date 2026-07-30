@@ -100,6 +100,16 @@ def list_devices():
             
     return {"devices": devices}
 
+def find_device_by_id(device_id: str) -> Optional[Dict[str, Any]]:
+    dev = storage.get_device_by_id(device_id)
+    if dev:
+        return dev
+    devices_data = list_devices()
+    for d in devices_data.get("devices", []):
+        if d.get("id") == device_id:
+            return d
+    return None
+
 @app.post("/api/devices")
 def create_device(device: DeviceSchema):
     created = storage.add_device(device.model_dump())
@@ -109,7 +119,7 @@ def create_device(device: DeviceSchema):
 
 @app.get("/api/devices/{device_id}")
 def get_device(device_id: str):
-    dev = storage.get_device_by_id(device_id)
+    dev = find_device_by_id(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     dev["status"] = ping_service.device_status_cache.get(device_id, {"online": False, "latency_ms": None})
@@ -131,7 +141,7 @@ def delete_device(device_id: str):
 
 @app.post("/api/wake/{device_id}")
 def wake_device(device_id: str):
-    dev = storage.get_device_by_id(device_id)
+    dev = find_device_by_id(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
@@ -153,7 +163,7 @@ def wake_device(device_id: str):
 
 @app.post("/api/shutdown/{device_id}")
 def shutdown_device(device_id: str):
-    dev = storage.get_device_by_id(device_id)
+    dev = find_device_by_id(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
@@ -167,7 +177,7 @@ async def scan_network_devices(subnet: Optional[str] = Query(None, description="
 
 @app.get("/api/ping/{device_id}")
 def ping_device(device_id: str):
-    dev = storage.get_device_by_id(device_id)
+    dev = find_device_by_id(device_id)
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
