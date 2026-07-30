@@ -3,7 +3,7 @@ import json
 import logging
 import urllib.request
 from typing import Dict, Any, Set
-from backend import storage, settings
+from backend import storage, settings, firebase_service
 from backend.ping import check_device_status
 
 logger = logging.getLogger("wakeoncasa.ping_service")
@@ -108,6 +108,10 @@ async def run_ping_cycle():
         "statuses": device_status_cache,
         "changes": changed_events
     })
+
+    # Publica status ao vivo no Firebase para a Vercel consumir
+    if firebase_service.is_firebase_enabled():
+        asyncio.to_thread(firebase_service.sync_statuses_to_firebase, device_status_cache)
 
 async def start_ping_loop():
     """

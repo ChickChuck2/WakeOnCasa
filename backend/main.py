@@ -20,11 +20,9 @@ async def lifespan(app: FastAPI):
         yield
         return
 
-    # Inicializa os loops de background apenas se NÃO estiver na Vercel (servidor CasaOS)
     ping_task = asyncio.create_task(ping_service.start_ping_loop())
     firebase_task = asyncio.create_task(firebase_service.start_firebase_listener_loop())
     yield
-    # Cancela as tarefas ao encerrar o servidor
     ping_task.cancel()
     firebase_task.cancel()
     try:
@@ -35,7 +33,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="WakeOnCasa API",
     description="API de Wake-on-LAN, Varredura de Rede e Sincronização Nuvem para CasaOS & Vercel",
-    version="1.4.0",
+    version="1.5.0",
     lifespan=lifespan
 )
 
@@ -63,7 +61,7 @@ def health_check():
     return {
         "status": "ok",
         "app": "WakeOnCasa",
-        "version": "1.4.0",
+        "version": "1.5.0",
         "environment": "vercel" if IS_VERCEL else "casaos",
         "firebase_enabled": firebase_service.is_firebase_enabled(),
         "firebase_connected": fb_connected
@@ -71,19 +69,35 @@ def health_check():
 
 @app.get("/api/devices")
 def list_devices():
-    # Tenta buscar dispositivos compartilhados do Firebase se configurado
+    local_devs = storage.get_devices()
     if firebase_service.is_firebase_enabled():
         cloud_devs = firebase_service.fetch_devices_from_firebase()
         if cloud_devs is not None:
-            storage.save_devices(cloud_devs)
-            devices = cloud_devs
+            if not cloud_devs and local_devs:
+                firebase_service.sync_devices_to_firebase(local_devs)
+                devices = local_devs
+            else:
+                merged = storage.merge_devices(local_devs, cloud_devs)
+                storage.save_devices(merged)
+                devices = merged
         else:
-            devices = storage.get_devices()
+            devices = local_devs
     else:
-        devices = storage.get_devices()
+        devices = local_devs
+
+    cloud_statuses = {}
+    if IS_VERCEL and firebase_service.is_firebase_enabled():
+        cloud_statuses = firebase_service.fetch_statuses_from_firebase()
 
     for dev in devices:
-        dev["status"] = ping_service.device_status_cache.get(dev["id"], {"online": False, "latency_ms": None})
+        dev_id = dev["id"]
+        if dev_id in ping_service.device_status_cache:
+            dev["status"] = ping_service.device_status_cache[dev_id]
+        elif dev_id in cloud_statuses:
+            dev["status"] = cloud_statuses[dev_id]
+        else:
+            dev["status"] = {"online": False, "latency_ms": None}
+            
     return {"devices": devices}
 
 @app.post("/api/devices")
@@ -104,17 +118,13 @@ def get_device(device_id: str):
 @app.put("/api/devices/{device_id}")
 def update_device(device_id: str, device: DeviceSchema):
     updated = storage.update_device(device_id, device.model_dump())
-    if not updated:
-        raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     if firebase_service.is_firebase_enabled():
         firebase_service.sync_devices_to_firebase(storage.get_devices())
-    return {"message": "Dispositivo atualizado com sucesso", "device": updated}
+    return {"message": "Dispositivo atualizado com sucesso", "device": updated or device.model_dump()}
 
 @app.delete("/api/devices/{device_id}")
 def delete_device(device_id: str):
-    success = storage.delete_device(device_id)
-    if not success:
-        raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
+    storage.delete_device(device_id)
     if firebase_service.is_firebase_enabled():
         firebase_service.sync_devices_to_firebase(storage.get_devices())
     return {"message": "Dispositivo removido com sucesso"}
@@ -163,6 +173,8 @@ def ping_device(device_id: str):
     
     status = check_device_status(dev["ip"])
     ping_service.device_status_cache[device_id] = status
+    if firebase_service.is_firebase_enabled():
+        firebase_service.sync_statuses_to_firebase(ping_service.device_status_cache)
     return {
         "device_id": device_id,
         "name": dev["name"],

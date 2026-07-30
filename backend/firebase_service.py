@@ -35,12 +35,8 @@ def is_firebase_enabled() -> bool:
     return bool(config["url"] or config["project_id"])
 
 def check_firebase_connection() -> bool:
-    """
-    Testa conectividade com o Firebase (Realtime Database ou Firestore REST API).
-    """
     config = get_firebase_config()
     
-    # 1. Tenta Realtime Database
     if config["url"]:
         endpoint = f"{config['url']}/.json?shallow=true"
         if config["secret"]:
@@ -56,7 +52,6 @@ def check_firebase_connection() -> bool:
         except Exception:
             pass
 
-    # 2. Fallback de teste na API REST do Firestore (Projeto testproject-49566)
     try:
         firestore_url = f"https://firestore.googleapis.com/v1/projects/{PROJECT_ID}/databases/(default)/documents"
         req = urllib.request.Request(firestore_url, headers={"User-Agent": "WakeOnCasa-Check/1.0"})
@@ -117,6 +112,56 @@ def fetch_devices_from_firebase() -> Optional[List[Dict[str, Any]]]:
     except Exception as e:
         logger.error(f"Erro ao buscar dispositivos do Firebase: {e}")
     return None
+
+def sync_statuses_to_firebase(statuses: Dict[str, Dict[str, Any]]) -> bool:
+    """
+    CasaOS publica os status ao vivo (ping) no Firebase (/statuses.json).
+    """
+    config = get_firebase_config()
+    if not config["url"]:
+        return False
+
+    endpoint = f"{config['url']}/statuses.json"
+    if config["secret"]:
+        endpoint += f"?auth={config['secret']}"
+
+    try:
+        req = urllib.request.Request(
+            endpoint,
+            data=json.dumps(statuses, ensure_ascii=False).encode("utf-8"),
+            headers={"Content-Type": "application/json"},
+            method="PUT"
+        )
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            return True
+    except Exception as e:
+        logger.error(f"Erro ao sincronizar status no Firebase: {e}")
+        return False
+
+def fetch_statuses_from_firebase() -> Dict[str, Dict[str, Any]]:
+    """
+    Vercel busca os status ao vivo enviados pelo CasaOS (/statuses.json).
+    """
+    config = get_firebase_config()
+    if not config["url"]:
+        return {}
+
+    endpoint = f"{config['url']}/statuses.json"
+    if config["secret"]:
+        endpoint += f"?auth={config['secret']}"
+
+    try:
+        req = urllib.request.Request(endpoint, headers={"Content-Type": "application/json"})
+        with urllib.request.urlopen(req, timeout=4) as resp:
+            raw_data = resp.read().decode("utf-8")
+            if not raw_data or raw_data == "null":
+                return {}
+            data = json.loads(raw_data)
+            if isinstance(data, dict):
+                return data
+    except Exception as e:
+        logger.error(f"Erro ao buscar status do Firebase: {e}")
+    return {}
 
 def push_wake_command(mac: str, device_name: str = "Dispositivo") -> Optional[Dict[str, Any]]:
     config = get_firebase_config()
@@ -215,8 +260,10 @@ async def start_firebase_listener_loop():
                 cloud_devs = await asyncio.to_thread(fetch_devices_from_firebase)
                 if cloud_devs is not None:
                     local_devs = storage.get_devices()
-                    if json.dumps(cloud_devs, sort_keys=True) != json.dumps(local_devs, sort_keys=True):
-                        storage.save_devices(cloud_devs)
+                    merged = storage.merge_devices(local_devs, cloud_devs)
+                    if json.dumps(merged, sort_keys=True) != json.dumps(local_devs, sort_keys=True):
+                        storage.save_devices(merged)
+                        await asyncio.to_thread(sync_devices_to_firebase, merged)
                         
             await asyncio.sleep(3)
         except asyncio.CancelledError:

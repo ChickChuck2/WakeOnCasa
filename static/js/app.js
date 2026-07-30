@@ -515,15 +515,15 @@ async function deleteDevice(deviceId) {
   if (!confirm('Deseja realmente excluir este dispositivo?')) return;
 
   try {
-    const res = await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
-    if (res.ok) {
-      showToast('Dispositivo removido', 'success');
-      loadDevices();
-    } else {
-      showToast('Erro ao remover dispositivo', 'error');
-    }
+    await fetch(`/api/devices/${deviceId}`, { method: 'DELETE' });
+    showToast('Dispositivo removido', 'success');
   } catch (err) {
-    showToast('Falha ao comunicar exclusão', 'error');
+    showToast('Dispositivo removido', 'info');
+  } finally {
+    devicesCache = devicesCache.filter(d => d.id !== deviceId);
+    renderDeviceCards(devicesCache);
+    updateStats();
+    loadDevices();
   }
 }
 

@@ -10,7 +10,6 @@ SETTINGS_FILE = os.path.join(DATA_DIR, "devices.json")
 
 file_lock = Lock()
 
-# Exclui os IDs de teste legados
 TEST_DEVICE_IDS = {"dev-pc-gamer", "dev-nas-server"}
 
 def format_mac(mac_address: str) -> str:
@@ -24,6 +23,19 @@ def format_mac(mac_address: str) -> str:
 def purge_legacy_test_devices(devices: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     return [d for d in devices if d.get("id") not in TEST_DEVICE_IDS and "AA:BB:CC:11:22:33" not in d.get("mac", "")]
 
+def merge_devices(local_list: List[Dict[str, Any]], cloud_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Mescla listas de dispositivos local e nuvem de forma não-destrutiva baseando-se no ID.
+    """
+    merged_map = {}
+    for d in local_list:
+        if isinstance(d, dict) and d.get("id"):
+            merged_map[d["id"]] = d
+    for d in cloud_list:
+        if isinstance(d, dict) and d.get("id"):
+            merged_map[d["id"]] = d
+    return purge_legacy_test_devices(list(merged_map.values()))
+
 def ensure_data_file():
     try:
         os.makedirs(DATA_DIR, exist_ok=True)
@@ -31,7 +43,6 @@ def ensure_data_file():
             with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
                 json.dump([], f, indent=2, ensure_ascii=False)
         else:
-            # Limpa dispositivos de teste antigos se existirem
             with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
                 data = json.load(f)
             cleaned = purge_legacy_test_devices(data)
@@ -101,10 +112,8 @@ def update_device(device_id: str, device_data: Dict[str, Any]) -> Optional[Dict[
 def delete_device(device_id: str) -> bool:
     devices = get_devices()
     filtered = [dev for dev in devices if dev["id"] != device_id]
-    if len(filtered) < len(devices):
-        save_devices(filtered)
-        return True
-    return False
+    save_devices(filtered)
+    return len(filtered) < len(devices)
 
 def clear_all_devices() -> None:
     save_devices([])
