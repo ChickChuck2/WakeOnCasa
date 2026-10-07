@@ -8,3 +8,8 @@ para seu conhecimento voce deve seguir os padrões do
 ou \\linux\root\DATA\AppData\discord-bot
 
 eu digo padrões do dockerfile e arquivos estruturados do dashboard para o CasaOS
+
+Você pode fazer SSH usando
+> SSH carlos@linux
+Senha:
+> porradesenha
