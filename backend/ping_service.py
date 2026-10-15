@@ -100,7 +100,7 @@ async def run_ping_cycle():
                 "new_status": new_status
             })
             # Dispara webhook assincronamente em thread
-            asyncio.to_thread(send_webhook_notification, dev, new_status)
+            asyncio.create_task(asyncio.to_thread(send_webhook_notification, dev, new_status))
 
     # Notifica via SSE se houver atualizações de status
     await notify_sse_subscribers({
@@ -111,7 +111,7 @@ async def run_ping_cycle():
 
     # Publica status ao vivo no Firebase para a Vercel consumir
     if firebase_service.is_firebase_enabled():
-        asyncio.to_thread(firebase_service.sync_statuses_to_firebase, device_status_cache)
+        asyncio.create_task(asyncio.to_thread(firebase_service.sync_statuses_to_firebase, device_status_cache))
 
 async def start_ping_loop():
     """

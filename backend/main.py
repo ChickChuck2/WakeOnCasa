@@ -161,21 +161,30 @@ def wake_device(device_id: str):
     if not dev:
         raise HTTPException(status_code=404, detail="Dispositivo não encontrado")
     
-    if IS_VERCEL or firebase_service.is_firebase_enabled():
-        fb_result = firebase_service.push_wake_command(dev["mac"], dev["name"])
-        return {
-            "message": f"Sinal Wake-on-LAN enviado via Firebase Sync para {dev['name']} ({dev['mac']})",
-            "firebase": fb_result or True
-        }
+    # Se estiver rodando no CasaOS (rede local), DISPARA SEMPRE O WoL DIRETAMENTE!
+    local_result = None
+    if not IS_VERCEL:
+        try:
+            local_result = send_wake_on_lan(dev["mac"])
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Erro ao enviar sinal WoL local: {str(e)}")
 
-    try:
-        result = send_wake_on_lan(dev["mac"])
-        return {
-            "message": f"Sinal Wake-on-LAN enviado localmente para {dev['name']} ({dev['mac']})",
-            "result": result
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Erro ao enviar sinal WoL: {str(e)}")
+    # Se estiver rodando na Vercel (nuvem), publica o comando no Firestore para o CasaOS executar
+    fb_result = None
+    if IS_VERCEL:
+        if firebase_service.is_firebase_enabled():
+            fb_result = firebase_service.push_wake_command(dev["mac"], dev["name"])
+            return {
+                "message": f"Sinal Wake-on-LAN enviado via nuvem para {dev['name']} ({dev['mac']})",
+                "firebase": fb_result or True
+            }
+        else:
+            raise HTTPException(status_code=500, detail="Ambiente em nuvem sem serviço de sincronização ativo")
+
+    return {
+        "message": f"Sinal Wake-on-LAN enviado localmente para {dev['name']} ({dev['mac']})",
+        "result": local_result
+    }
 
 @app.post("/api/shutdown/{device_id}")
 def shutdown_device(device_id: str):
