@@ -170,7 +170,7 @@ def push_wake_command(mac: str, device_name: str = "Dispositivo") -> Optional[Di
     if time.time() < _firestore_backoff_until:
         return None
 
-    url = f"{FIRESTORE_BASE_URL}/wakeoncasa_requests"
+    url = f"{FIRESTORE_BASE_URL}/wakeoncasa_requests?pageSize=5"
     payload = {
         "fields": {
             "mac": { "stringValue": mac },
@@ -208,7 +208,7 @@ def process_pending_commands():
     if time.time() < _firestore_backoff_until:
         return
 
-    url = f"{FIRESTORE_BASE_URL}/wakeoncasa_requests"
+    url = f"{FIRESTORE_BASE_URL}/wakeoncasa_requests?pageSize=5"
     try:
         req = urllib.request.Request(url, headers={"Content-Type": "application/json"})
         with urllib.request.urlopen(req, timeout=5) as resp:
@@ -233,20 +233,28 @@ def process_pending_commands():
                         logger.error(f"Erro ao executar WoL local: {err}")
                         exec_status = f"failed: {str(err)}"
 
-                    patch_payload = {
-                        "fields": {
-                            "status": { "stringValue": exec_status },
-                            "executed_at": { "integerValue": str(int(time.time())) }
-                        }
-                    }
-
-                    patch_req = urllib.request.Request(
-                        f"https://firestore.googleapis.com/v1/{doc_name}?updateMask.fieldPaths=status&updateMask.fieldPaths=executed_at",
-                        data=json.dumps(patch_payload, ensure_ascii=False).encode("utf-8"),
-                        headers={"Content-Type": "application/json"},
-                        method="PATCH"
-                    )
-                    urllib.request.urlopen(patch_req, timeout=5)
+                    # Deleta o comando executado para não acumular documentos na coleção
+                    try:
+                        del_req = urllib.request.Request(
+                            f"https://firestore.googleapis.com/v1/{doc_name}",
+                            headers={"Content-Type": "application/json"},
+                            method="DELETE"
+                        )
+                        urllib.request.urlopen(del_req, timeout=5)
+                        logger.info(f"Comando concluído e deletado do Firestore: {doc_name}")
+                    except Exception as del_err:
+                        logger.warning(f"Erro ao deletar comando concluído: {del_err}")
+                else:
+                    # Limpeza automática: expurga documentos antigos já concluídos para zerar a coleção
+                    try:
+                        del_req = urllib.request.Request(
+                            f"https://firestore.googleapis.com/v1/{doc_name}",
+                            headers={"Content-Type": "application/json"},
+                            method="DELETE"
+                        )
+                        urllib.request.urlopen(del_req, timeout=5)
+                    except Exception:
+                        pass
 
     except urllib.error.HTTPError as err:
         if err.code == 429:
@@ -276,7 +284,7 @@ async def start_firebase_listener_loop():
                             await asyncio.to_thread(sync_devices_to_firebase, merged)
                             
             iteration += 1
-            await asyncio.sleep(10)
+            await asyncio.sleep(25)
         except asyncio.CancelledError:
             break
         except Exception as e:
